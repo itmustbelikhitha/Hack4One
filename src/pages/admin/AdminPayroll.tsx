@@ -131,3 +131,6 @@ export function AdminPayroll() {
     </div>
   );
 }
+
+export const AdminPayrollPage = AdminPayroll;
+export default AdminPayroll;

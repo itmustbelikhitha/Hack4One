@@ -59,15 +59,19 @@ router.put('/:employee_id', requireAuth, async (req, res) => {
     const { employee_id } = req.params;
     const { full_name, phone, address, department, designation, joining_date, profile_picture } = req.body;
 
-    // Build the update payload (only provided fields)
+    // Build the update payload (only permitted fields)
     const updates = {};
     if (full_name !== undefined) updates.full_name = full_name;
     if (phone !== undefined) updates.phone = phone;
     if (address !== undefined) updates.address = address;
-    if (department !== undefined) updates.department = department;
-    if (designation !== undefined) updates.designation = designation;
-    if (joining_date !== undefined) updates.joining_date = joining_date;
     if (profile_picture !== undefined) updates.profile_picture = profile_picture;
+
+    // Only admins can modify organization fields (department, designation, joining_date)
+    if (req.user.role === 'admin') {
+      if (department !== undefined) updates.department = department;
+      if (designation !== undefined) updates.designation = designation;
+      if (joining_date !== undefined) updates.joining_date = joining_date;
+    }
 
     // Verify ownership or admin
     const { data: emp } = await supabase

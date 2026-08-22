@@ -113,3 +113,7 @@ export function EmployeePayroll() {
     </div>
   );
 }
+
+export const PayrollPage = EmployeePayroll;
+export const EmployeePayrollPage = EmployeePayroll;
+export default EmployeePayroll;

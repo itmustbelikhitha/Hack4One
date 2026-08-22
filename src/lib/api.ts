@@ -244,12 +244,6 @@ export async function updatePayroll(
   employeeId: string,
   updates: { basicSalary?: number; allowances?: number; deductions?: number; effectiveFrom?: string },
 ): Promise<Payroll> {
-  const row: Record<string, any> = {};
-  if (updates.basicSalary !== undefined) row.basic_salary = updates.basicSalary;
-  if (updates.allowances !== undefined) row.allowances = updates.allowances;
-  if (updates.deductions !== undefined) row.deductions = updates.deductions;
-  if (updates.effectiveFrom !== undefined) row.effective_from = updates.effectiveFrom;
-
   const { data: existing } = await supabase
     .from('payroll')
     .select('*')
@@ -257,6 +251,23 @@ export async function updatePayroll(
     .order('effective_from', { ascending: false })
     .limit(1)
     .maybeSingle() as { data: PayrollRow | null; error: any };
+
+  const basic = updates.basicSalary !== undefined ? Number(updates.basicSalary) : (existing ? Number(existing.basic_salary) : 0);
+  const allow = updates.allowances !== undefined ? Number(updates.allowances) : (existing ? Number(existing.allowances) : 0);
+  const deduct = updates.deductions !== undefined ? Number(updates.deductions) : (existing ? Number(existing.deductions) : 0);
+  const net = basic + allow - deduct;
+
+  const row: Record<string, any> = {
+    basic_salary: basic,
+    allowances: allow,
+    deductions: deduct,
+    net_salary: net,
+  };
+  if (updates.effectiveFrom !== undefined) {
+    row.effective_from = updates.effectiveFrom;
+  } else if (!existing) {
+    row.effective_from = new Date().toISOString().split('T')[0];
+  }
 
   let result: PayrollRow | null = null;
   let error: any = null;

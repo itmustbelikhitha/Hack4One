@@ -162,3 +162,7 @@ export function AdminLeaves() {
     </div>
   );
 }
+
+export const AdminLeavePage = AdminLeaves;
+export const AdminLeavesPage = AdminLeaves;
+export default AdminLeaves;

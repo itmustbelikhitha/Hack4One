@@ -23,6 +23,22 @@ async function getEmployeeIdForUser(userId) {
   return data.employee_id;
 }
 
+// GET /api/payroll — admin only
+router.get('/', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('payroll')
+      .select('*')
+      .order('effective_from', { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    return res.json(data);
+  } catch (err) {
+    return res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
 // GET /api/payroll/:employee_id
 router.get('/:employee_id', requireAuth, async (req, res) => {
   try {
@@ -49,22 +65,6 @@ router.get('/:employee_id', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/payroll — admin only
-router.get('/', requireAuth, requireAdmin, async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('payroll')
-      .select('*')
-      .order('effective_from', { ascending: false });
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    return res.json(data);
-  } catch (err) {
-    return res.status(500).json({ error: 'Internal server error.' });
-  }
-});
-
 // PUT /api/payroll/:employee_id — admin only
 // Updates the latest payroll row or inserts a new one if none exists.
 router.put('/:employee_id', requireAuth, requireAdmin, async (req, res) => {
@@ -72,20 +72,31 @@ router.put('/:employee_id', requireAuth, requireAdmin, async (req, res) => {
     const { employee_id } = req.params;
     const { basic_salary, allowances, deductions, effective_from } = req.body;
 
-    const updates = {};
-    if (basic_salary !== undefined) updates.basic_salary = basic_salary;
-    if (allowances !== undefined) updates.allowances = allowances;
-    if (deductions !== undefined) updates.deductions = deductions;
-    if (effective_from !== undefined) updates.effective_from = effective_from;
-
     // Check if a payroll row already exists
     const { data: existing } = await supabase
       .from('payroll')
-      .select('payroll_id')
+      .select('*')
       .eq('employee_id', employee_id)
       .order('effective_from', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    const basic = basic_salary !== undefined ? Number(basic_salary) : (existing ? Number(existing.basic_salary) : 0);
+    const allow = allowances !== undefined ? Number(allowances) : (existing ? Number(existing.allowances) : 0);
+    const deduct = deductions !== undefined ? Number(deductions) : (existing ? Number(existing.deductions) : 0);
+    const net = basic + allow - deduct;
+
+    const updates = {
+      basic_salary: basic,
+      allowances: allow,
+      deductions: deduct,
+      net_salary: net,
+    };
+    if (effective_from !== undefined) {
+      updates.effective_from = effective_from;
+    } else if (!existing) {
+      updates.effective_from = new Date().toISOString().split('T')[0];
+    }
 
     let result;
     let error;

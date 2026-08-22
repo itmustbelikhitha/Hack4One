@@ -151,3 +151,7 @@ export function EmployeeLeave() {
     </div>
   );
 }
+
+export const LeavePage = EmployeeLeave;
+export const EmployeeLeavePage = EmployeeLeave;
+export default EmployeeLeave;

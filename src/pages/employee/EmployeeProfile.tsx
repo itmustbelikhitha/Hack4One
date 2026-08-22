@@ -14,7 +14,7 @@ export function EmployeeProfile() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    fullName: '', phone: '', address: '', department: '', designation: '', joiningDate: '',
+    fullName: '', phone: '', address: '', profilePicture: '',
   });
 
   useEffect(() => {
@@ -28,9 +28,7 @@ export function EmployeeProfile() {
             fullName: emp.fullName,
             phone: emp.phone ?? '',
             address: emp.address ?? '',
-            department: emp.department ?? '',
-            designation: emp.designation ?? '',
-            joiningDate: emp.joiningDate ?? '',
+            profilePicture: emp.profilePicture ?? '',
           });
         }
       } catch (err) {
@@ -50,9 +48,7 @@ export function EmployeeProfile() {
         fullName: form.fullName,
         phone: form.phone,
         address: form.address,
-        department: form.department,
-        designation: form.designation,
-        joiningDate: form.joiningDate,
+        profilePicture: form.profilePicture || null,
       });
       setEmployee(updated);
       setEditing(false);
@@ -111,14 +107,17 @@ export function EmployeeProfile() {
 
       {editing ? (
         <Card>
-          <CardHeader title="Edit Profile" />
+          <CardHeader title="Edit Profile" subtitle="Update your personal contact information" />
           <form onSubmit={handleSave} className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input label="Full Name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
             <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Phone number" />
             <Input label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Your address" />
-            <Input label="Department" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Department" />
-            <Input label="Designation" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} placeholder="Job title" />
-            <Input label="Joining Date" type="date" value={form.joiningDate} onChange={(e) => setForm({ ...form, joiningDate: e.target.value })} />
+            <Input label="Profile Picture URL" value={form.profilePicture} onChange={(e) => setForm({ ...form, profilePicture: e.target.value })} placeholder="https://..." />
+            <div className="sm:col-span-2">
+              <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                Note: Department, Designation, Joining Date, and Role are managed by organization administrators.
+              </p>
+            </div>
             <div className="sm:col-span-2">
               <Button type="submit" disabled={saving}>
                 {saving ? <Spinner size="sm" /> : <><Save size={18} className="mr-2" /> Save Changes</>}
@@ -156,3 +155,6 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
     </div>
   );
 }
+
+export const EmployeeProfilePage = EmployeeProfile;
+export default EmployeeProfile;
