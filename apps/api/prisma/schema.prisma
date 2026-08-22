@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  ADMIN
+  EMPLOYEE
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ONBOARDING
+  SUSPENDED
+  TERMINATED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayrollStatus {
+  DRAFT
+  GENERATED
+  PAID
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        RoleName     @unique
+  users       User[]
+  permissions Permission[] @relation("RolePermissions")
+}
+
+model Permission {
+  id    String @id @default(cuid())
+  key   String @unique
+  roles Role[] @relation("RolePermissions")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  employeeId        String    @unique
+  email             String    @unique
+  passwordHash      String
+  emailVerifiedAt   DateTime?
+  lockedUntil       DateTime?
+  failedLoginCount  Int       @default(0)
+  mfaSecret         String?
+  roleId            String
+  role              Role      @relation(fields: [roleId], references: [id])
+  employee          Employee?
+  sessions          Session[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  loginActivities   LoginActivity[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+}
+
+model Department {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  employees Employee[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Employee {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id])
+  employeeCode       String             @unique
+  fullName           String
+  jobTitle           String
+  roleLabel          String
+  joiningDate        DateTime
+  employmentStatus   EmploymentStatus   @default(ACTIVE)
+  departmentId       String
+  department         Department         @relation(fields: [departmentId], references: [id])
+  reportingManagerId String?
+  reportingManager   Employee?          @relation("Reporting", fields: [reportingManagerId], references: [id])
+  reports            Employee[]         @relation("Reporting")
+  profile            EmployeeProfile?
+  attendance         Attendance[]
+  leaveRequests      LeaveRequest[]
+  leaveBalances      LeaveBalance[]
+  salaryStructures   SalaryStructure[]
+  payrolls           Payroll[]
+  documents          Document[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  @@index([departmentId])
+  @@index([employmentStatus])
+}
+
+model EmployeeProfile {
+  id                String   @id @default(cuid())
+  employeeId        String   @unique
+  employee          Employee @relation(fields: [employeeId], references: [id])
+  phone             String?
+  address           String?
+  profilePictureUrl String?
+  completionPercent Int      @default(60)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Attendance {
+  id                String           @id @default(cuid())
+  employeeId        String
+  employee          Employee         @relation(fields: [employeeId], references: [id])
+  date              DateTime
+  checkInAt         DateTime?
+  checkOutAt        DateTime?
+  status            AttendanceStatus @default(ABSENT)
+  totalWorkingHours Decimal          @default(0)
+  late              Boolean          @default(false)
+  earlyDeparture    Boolean          @default(false)
+  anomaly           Boolean          @default(false)
+  notes             String?
+  audits            AttendanceAudit[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  @@unique([employeeId, date])
+  @@index([date, status])
+}
+
+model AttendanceAudit {
+  id           String     @id @default(cuid())
+  attendanceId String
+  attendance   Attendance @relation(fields: [attendanceId], references: [id])
+  changedById  String
+  before       Json
+  after        Json
+  createdAt    DateTime   @default(now())
+}
+
+model LeaveType {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  paid      Boolean        @default(true)
+  annualAllowance Int      @default(0)
+  requests  LeaveRequest[]
+  balances  LeaveBalance[]
+}
+
+model LeaveRequest {
+  id           String      @id @default(cuid())
+  employeeId   String
+  employee     Employee    @relation(fields: [employeeId], references: [id])
+  leaveTypeId  String
+  leaveType    LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  startDate    DateTime
+  endDate      DateTime
+  days         Int
+  remarks      String?
+  status       LeaveStatus @default(PENDING)
+  approverId   String?
+  approverNote String?
+  decidedAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  @@index([employeeId, status])
+  @@index([startDate, endDate])
+}
+
+model LeaveBalance {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  year        Int
+  allocated   Int
+  used        Int       @default(0)
+  pending     Int       @default(0)
+  @@unique([employeeId, leaveTypeId, year])
+}
+
+model SalaryStructure {
+  id          String            @id @default(cuid())
+  employeeId  String
+  employee    Employee          @relation(fields: [employeeId], references: [id])
+  baseSalary  Decimal
+  allowances  Decimal           @default(0)
+  deductions  Decimal           @default(0)
+  netSalary   Decimal
+  effectiveFrom DateTime
+  active      Boolean           @default(true)
+  components  SalaryComponent[]
+  revisions   SalaryRevision[]
+}
+
+model SalaryComponent {
+  id                String          @id @default(cuid())
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id])
+  name              String
+  type              String
+  amount            Decimal
+}
+
+model SalaryRevision {
+  id                String          @id @default(cuid())
+  salaryStructureId String
+  salaryStructure   SalaryStructure @relation(fields: [salaryStructureId], references: [id])
+  previousNet       Decimal
+  revisedNet        Decimal
+  reason            String
+  createdAt         DateTime        @default(now())
+}
+
+model Payroll {
+  id          String        @id @default(cuid())
+  employeeId  String
+  employee    Employee      @relation(fields: [employeeId], references: [id])
+  period      String
+  gross       Decimal
+  deductions  Decimal
+  net         Decimal
+  status      PayrollStatus @default(GENERATED)
+  items       PayrollItem[]
+  slip        SalarySlip?
+  createdAt   DateTime      @default(now())
+  @@unique([employeeId, period])
+}
+
+model PayrollItem {
+  id        String  @id @default(cuid())
+  payrollId String
+  payroll   Payroll @relation(fields: [payrollId], references: [id])
+  label     String
+  type      String
+  amount    Decimal
+}
+
+model SalarySlip {
+  id        String   @id @default(cuid())
+  payrollId String   @unique
+  payroll   Payroll  @relation(fields: [payrollId], references: [id])
+  pdfUrl    String
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  name       String
+  category   String
+  mimeType   String
+  sizeBytes  Int
+  storageKey String
+  createdAt  DateTime @default(now())
+  deletedAt  DateTime?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  inApp     Boolean @default(true)
+  email     Boolean @default(false)
+  push      Boolean @default(false)
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  ipAddress String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  @@index([action, createdAt])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  refreshHash  String
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+}
+
+model LoginActivity {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  email     String
+  success   Boolean
+  ipAddress String?
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+model OrganizationSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
