@@ -49,6 +49,16 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Root info
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Dayflow HRMS API Server is running.',
+    frontend_url: 'http://localhost:5173',
+    health_check: '/api/health',
+    version: '1.0.0',
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'dayflow-api', timestamp: new Date().toISOString() });
