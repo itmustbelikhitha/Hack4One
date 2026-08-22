@@ -254,11 +254,11 @@ function Page(props: { route: string; role: Role; token: string; employee: Emplo
   if (props.route === "profile") return <Profile token={props.token} employee={props.employee} notify={props.notify} refreshMe={props.refreshMe} />;
   if (props.route === "attendance") return <Attendance token={props.token} role={props.role} notify={props.notify} />;
   if (props.route === "leave") return <Leave token={props.token} role={props.role} />;
-  if (props.route === "payroll") return <Payroll token={props.token} role={props.role} employee={props.employee} />;
-  if (props.route === "notifications") return <Notifications token={props.token} />;
+  if (props.route === "payroll") return <Payroll token={props.token} role={props.role} employee={props.employee} notify={props.notify} />;
+  if (props.route === "notifications") return <Notifications token={props.token} notify={props.notify} />;
   if (props.route === "documents") return <Documents token={props.token} employee={props.employee} />;
   if (props.route === "analytics") return <Analytics token={props.token} />;
-  if (props.route === "reports") return <Reports token={props.token} />;
+  if (props.route === "reports") return <Reports token={props.token} notify={props.notify} />;
   if (props.route === "audit") return <AuditLogs token={props.token} />;
   return <SettingsPage token={props.token} role={props.role} />;
 }
@@ -350,7 +350,7 @@ function Employees({ token, notify }: { token: string; notify: (tone: "success" 
   }
   return (
     <section className="pageGrid">
-      <Panel title="Employee Directory" action={<button onClick={() => download(`${apiBase}/reports/employees`, token)}><Download size={16} /> Export</button>}>
+      <Panel title="Employee Directory" action={<button onClick={() => downloadFile(`${apiBase}/reports/employees?format=pdf`, token, notify)}><Download size={16} /> Export PDF</button>}>
         <div className="toolbar"><Input label="Search employees" value={q} onChange={setQ} /></div>
         <DataTable rows={data.data} columns={["employeeCode", "fullName", "department", "jobTitle", "email", "employmentStatus", "joiningDate"]} renderActions={(row) => <><button title="View profile" onClick={() => setSelected(row)}><Eye size={16} /></button><button title="Edit profile" onClick={() => setEditing(row)}><Pencil size={16} /></button><button title="Soft delete" onClick={() => deleteEmployee(row)}><Trash2 size={16} /></button></>} />
       </Panel>
@@ -461,7 +461,7 @@ function Leave({ token, role }: { token: string; role: Role }) {
   );
 }
 
-function Payroll({ token, role, employee }: { token: string; role: Role; employee: Employee | null }) {
+function Payroll({ token, role, employee, notify }: { token: string; role: Role; employee: Employee | null; notify: (tone: "success" | "error" | "info", text: string) => void }) {
   const [data, setData] = useState<any>({ data: [] });
   const [salary, setSalary] = useState({ baseSalary: employee?.baseSalary || 0, allowances: employee?.allowances || 0, deductions: employee?.deductions || 0, reason: "Annual revision" });
   const load = () => api("/payroll", token).then(setData);
@@ -470,7 +470,7 @@ function Payroll({ token, role, employee }: { token: string; role: Role; employe
   return (
     <section className="pageGrid">
       <Panel title="Payroll History">
-        <DataTable rows={data.data} columns={["period", "gross", "deductions", "net", "status"]} renderActions={(row) => <button onClick={() => download(`${apiBase}/payroll/${row.id}/slip`, token)}><FileText size={16} /> Slip</button>} />
+        <DataTable rows={data.data} columns={["period", "gross", "deductions", "net", "status"]} renderActions={(row) => <button onClick={() => downloadFile(`${apiBase}/payroll/${row.id}/slip`, token, notify)}><FileText size={16} /> Slip</button>} />
       </Panel>
       {role === "ADMIN" && <Panel title="Salary Structure">
         <div className="formGrid">
@@ -485,13 +485,74 @@ function Payroll({ token, role, employee }: { token: string; role: Role; employe
   );
 }
 
-function Notifications({ token }: { token: string }) {
+function Notifications({ token, notify }: { token: string; notify: (tone: "success" | "error" | "info", text: string) => void }) {
   const [data, setData] = useState<any>({ data: [], unread: 0 });
-  const load = () => api("/notifications", token).then(setData);
+  const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
+  const load = () => api("/notifications", token).then(setData).catch((error) => notify("error", error.message));
   useEffect(() => { load(); }, []);
-  return <Panel title={`Notifications (${data.unread} unread)`} action={<button onClick={() => api("/notifications/read-all", token, { method: "PATCH" }).then(load)}>Mark all read</button>}>
-    <div className="list">{data.data.map((note: any) => <button className="listItem" key={note.id} onClick={() => api(`/notifications/${note.id}/read`, token, { method: "PATCH" }).then(load)}><b>{note.title}</b><span>{note.body}</span><Status value={note.readAt ? "READ" : "UNREAD"} /></button>)}</div>
-  </Panel>;
+  const notifications = data.data || [];
+  const readCount = notifications.length - data.unread;
+  const filtered = notifications.filter((note: any) => filter === "all" || (filter === "unread" ? !note.readAt : note.readAt));
+  async function markRead(id: string) {
+    try {
+      await api(`/notifications/${id}/read`, token, { method: "PATCH" });
+      await load();
+      notify("success", "Notification marked as read.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Could not update notification.");
+    }
+  }
+  async function markAllRead() {
+    try {
+      await api("/notifications/read-all", token, { method: "PATCH" });
+      await load();
+      notify("success", "All notifications marked as read.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Could not update notifications.");
+    }
+  }
+  return (
+    <section className="pageGrid">
+      <div className="notificationHero">
+        <div className="notificationHeroIcon"><Bell size={24} /></div>
+        <div>
+          <span className="sectionKicker"><Clock3 size={16} /> Notification center</span>
+          <h2>{data.unread ? `${data.unread} item${data.unread === 1 ? "" : "s"} need attention` : "All caught up"}</h2>
+          <p>Review approvals, account updates, and workflow alerts from one focused inbox.</p>
+        </div>
+        <button className="primary" onClick={markAllRead} disabled={!data.unread}><CheckCircle size={16} /> Mark all read</button>
+      </div>
+      <div className="notificationStats">
+        <Metric label="Total" value={String(notifications.length)} />
+        <Metric label="Unread" value={String(data.unread)} />
+        <Metric label="Read" value={String(readCount)} />
+      </div>
+      <Panel title="Inbox" action={<div className="segmented"><button className={filter === "all" ? "selected" : ""} onClick={() => setFilter("all")}>All</button><button className={filter === "unread" ? "selected" : ""} onClick={() => setFilter("unread")}>Unread</button><button className={filter === "read" ? "selected" : ""} onClick={() => setFilter("read")}>Read</button></div>}>
+        <div className="notificationList">
+          {filtered.map((note: any) => <NotificationItem key={note.id} note={note} onRead={() => markRead(note.id)} />)}
+          {!filtered.length && <div className="empty notificationEmpty"><Bell size={24} /><b>No notifications here.</b><span>Try another filter or check back after new HR activity.</span></div>}
+        </div>
+      </Panel>
+    </section>
+  );
+}
+
+function NotificationItem({ note, onRead }: { note: any; onRead: () => void }) {
+  const unread = !note.readAt;
+  return (
+    <article className={`notificationItem ${unread ? "unread" : "read"}`}>
+      <div className="notificationIcon"><Bell size={18} /></div>
+      <div className="notificationContent">
+        <div className="notificationTitle">
+          <b>{note.title}</b>
+          <Status value={unread ? "UNREAD" : "READ"} />
+        </div>
+        <p>{note.body}</p>
+        <div className="notificationMeta"><span>{label(String(note.type || "update"))}</span><span>{format(note.createdAt)}</span></div>
+      </div>
+      <button onClick={onRead} disabled={!unread}><CheckCircle size={16} /> {unread ? "Mark read" : "Read"}</button>
+    </article>
+  );
 }
 
 function Documents({ token, employee }: { token: string; employee: Employee | null }) {
@@ -510,8 +571,24 @@ function Analytics({ token }: { token: string }) {
   return <section className="split"><Panel title="Attendance"><Chart data={data.attendanceTrend} type="line" /></Panel><Panel title="Leave Types"><Chart data={data.leaveDistribution} type="pie" /></Panel><Panel title="Departments"><Chart data={data.departmentDistribution} type="bar" /></Panel><Panel title="Payroll Trend"><Chart data={data.payrollTrend} type="line" /></Panel></section>;
 }
 
-function Reports({ token }: { token: string }) {
-  return <Panel title="Reports"><div className="reportGrid">{["attendance", "leaves", "employees", "payroll"].map((type) => <button key={type} className="reportTile" onClick={() => download(`${apiBase}/reports/${type}`, token)}><Download size={18} /><b>{label(type)} report</b><span>CSV export and print-ready source data</span></button>)}</div></Panel>;
+function Reports({ token, notify }: { token: string; notify: (tone: "success" | "error" | "info", text: string) => void }) {
+  return (
+    <Panel title="Reports">
+      <div className="reportGrid">
+        {["attendance", "leaves", "employees", "payroll"].map((type) => (
+          <article key={type} className="reportTile">
+            <Download size={18} />
+            <b>{label(type)} report</b>
+            <span>Structured PDF or CSV source data</span>
+            <div className="reportActions">
+              <button onClick={() => downloadFile(`${apiBase}/reports/${type}?format=pdf`, token, notify)}><FileText size={16} /> PDF</button>
+              <button onClick={() => downloadFile(`${apiBase}/reports/${type}`, token, notify)}><Download size={16} /> CSV</button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </Panel>
+  );
 }
 
 function AuditLogs({ token }: { token: string }) {
@@ -644,16 +721,41 @@ async function api(path: string, token = "", options: { method?: string; body?: 
   return data;
 }
 
-function download(url: string, token: string) {
-  fetch(url, { headers: { Authorization: `Bearer ${token}` } }).then(async (response) => {
+async function downloadFile(url: string, token: string, notify?: (tone: "success" | "error" | "info", text: string) => void) {
+  try {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, credentials: "include" });
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type") || "";
+      const error = contentType.includes("application/json") ? await response.json() : await response.text();
+      throw new Error(error?.error?.message || "Download failed.");
+    }
     const blob = await response.blob();
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = href;
-    link.download = url.split("/").pop() || "dayflow-report";
+    link.download = filenameFromResponse(response) || filenameFromUrl(url);
+    link.rel = "noopener";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(href);
-  });
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(href), 1000);
+    notify?.("success", `Downloaded ${link.download}.`);
+  } catch (error) {
+    notify?.("error", error instanceof Error ? error.message : "Download failed.");
+  }
+}
+
+function filenameFromResponse(response: Response) {
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  return match?.[1];
+}
+
+function filenameFromUrl(url: string) {
+  const parsed = new URL(url);
+  const type = parsed.pathname.split("/").filter(Boolean).pop() || "dayflow-report";
+  const extension = parsed.searchParams.get("format") === "pdf" ? "pdf" : "csv";
+  return `${type}.${extension}`;
 }
 
 function label(value: string) {
