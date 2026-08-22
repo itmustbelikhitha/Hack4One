@@ -146,16 +146,17 @@ npm run dev      # Starts Express on port 3001
 
 ## Team Responsibilities
 
-| Developer | Tool             | Modules                                      |
-|-----------|------------------|----------------------------------------------|
-| Dev 1 (Technical Head) | Bolt | Architecture, shared UI, database, integration, testing |
-| Dev 2    | Antigravity      | Auth, login, roles, dashboards, attendance   |
-| Dev 3    | VS Code + Copilot | Profile, leave, payroll                      |
-
+| Developer | Tool              | Modules                                      |
+|-----------|-------------------|----------------------------------------------|
+| Dev 1     |Bolt.new / VS Codem| Architecture, shared UI, database, integration, testing |
+| Dev 2     |Antigravity/VS Code| Auth, login, roles, dashboards, |
+| Dev 3     |VS Code + Copilot  | Leave, attendance  
+| Dev 4     | VS Code + Cursor  | Profile, payroll                      |
+ 
 ## Git Workflow
 
 - Branch: `feature/technical-head`
 - Pull before starting: `git pull origin main`
 - Commit hourly: `git commit -m "Hour X: <description>"`
 - Never force push
-- Technical Head merges stable branches into `main`
+-  merges stable branche into `main`
