@@ -2,9 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
+  ArrowUpRight,
   Bell,
   BriefcaseBusiness,
   CalendarCheck,
+  Clock3,
   Command,
   Download,
   Eye,
@@ -21,6 +23,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Sun,
   Trash2,
   Upload,
@@ -122,6 +125,7 @@ function App() {
 
   return (
     <div className="appShell">
+      <div className="ambientLayer" aria-hidden="true" />
       <aside className="sidebar">
         <div className="brandMark">
           <div className="logo">D</div>
@@ -141,6 +145,7 @@ function App() {
             <h1>{active.label}</h1>
           </div>
           <div className="topActions">
+            <span className="livePill"><span /> Live workspace</span>
             <button className="searchButton" onClick={() => setCommandOpen(true)}><Search size={16} /> Search</button>
             <button className="iconButton" onClick={() => setDark(!dark)} title="Toggle theme">{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
             <button className="iconButton" onClick={() => setRoute("notifications")} title="Notifications"><Bell size={18} /></button>
@@ -187,10 +192,15 @@ function AuthScreen({ onLogin }: { onLogin: (token: string, user: User, employee
 
   return (
     <main className="auth">
+      <div className="authBackdrop" aria-hidden="true" />
       <section className="authHero">
         <div className="logo large">D</div>
         <h1>DAYFLOW</h1>
         <p>Every workday, perfectly aligned.</p>
+        <div className="heroSignal">
+          <Sparkles size={18} />
+          <span>Smart HR operations with audit-ready workflows</span>
+        </div>
         <div className="authPreview">
           <Metric label="Present today" value="96%" />
           <Metric label="Leave SLA" value="2h" />
@@ -221,14 +231,14 @@ function Page(props: { route: string; role: Role; token: string; employee: Emplo
   if (props.route === "employees") return <Employees token={props.token} notify={props.notify} />;
   if (props.route === "profile") return <Profile token={props.token} employee={props.employee} notify={props.notify} refreshMe={props.refreshMe} />;
   if (props.route === "attendance") return <Attendance token={props.token} role={props.role} notify={props.notify} />;
-  if (props.route === "leave") return <Leave token={props.token} role={props.role} notify={props.notify} />;
-  if (props.route === "payroll") return <Payroll token={props.token} role={props.role} employee={props.employee} notify={props.notify} />;
-  if (props.route === "notifications") return <Notifications token={props.token} notify={props.notify} />;
-  if (props.route === "documents") return <Documents token={props.token} employee={props.employee} notify={props.notify} />;
+  if (props.route === "leave") return <Leave token={props.token} role={props.role} />;
+  if (props.route === "payroll") return <Payroll token={props.token} role={props.role} employee={props.employee} />;
+  if (props.route === "notifications") return <Notifications token={props.token} />;
+  if (props.route === "documents") return <Documents token={props.token} employee={props.employee} />;
   if (props.route === "analytics") return <Analytics token={props.token} />;
   if (props.route === "reports") return <Reports token={props.token} />;
   if (props.route === "audit") return <AuditLogs token={props.token} />;
-  return <SettingsPage token={props.token} role={props.role} notify={props.notify} />;
+  return <SettingsPage token={props.token} role={props.role} />;
 }
 
 function Dashboard({ role, token, setRoute }: { role: Role; token: string; setRoute: (route: string) => void }) {
@@ -238,8 +248,24 @@ function Dashboard({ role, token, setRoute }: { role: Role; token: string; setRo
   const metrics = data.metrics;
   return (
     <section className="pageGrid">
+      <div className="dashboardHero">
+        <div>
+          <span className="sectionKicker"><Sparkles size={16} /> Command center</span>
+          <h2>{role === "ADMIN" ? "Workforce operations, ready for action." : "Your day, organized in one place."}</h2>
+          <p>{role === "ADMIN" ? "Monitor attendance signals, people movement, payroll readiness, and approvals without jumping between tools." : "Track attendance, leave, pay, documents, and notifications from a single focused dashboard."}</p>
+        </div>
+        <div className="heroActions">
+          <button className="primary" onClick={() => setRoute("attendance")}><Clock3 size={16} /> Attendance</button>
+          <button onClick={() => setRoute(role === "ADMIN" ? "employees" : "leave")}><ArrowUpRight size={16} /> {role === "ADMIN" ? "Open people" : "Request leave"}</button>
+        </div>
+      </div>
       <div className="metricGrid">
         {Object.entries(metrics).slice(0, 7).map(([key, value]) => <Metric key={key} label={label(key)} value={typeof value === "object" && value ? ((value as { period?: string }).period || "Ready") : String(value)} />)}
+      </div>
+      <div className="insightStrip">
+        <Insight icon={<CalendarCheck size={18} />} title="Attendance pulse" text="Trend chart updates from live attendance records." />
+        <Insight icon={<ShieldCheck size={18} />} title="Audit posture" text="Sensitive HR actions are tracked for review." />
+        <Insight icon={<Bell size={18} />} title="Queue focus" text="Notifications surface unread work first." />
       </div>
       <div className="split">
         <Panel title="Attendance Trend" action={<button onClick={() => setRoute("attendance")}><CalendarCheck size={16} /> Open</button>}>
@@ -334,7 +360,7 @@ function Profile({ token, employee, notify, refreshMe }: { token: string; employ
   return (
     <section className="split">
       <Panel title="Personal Information">
-        <div className="profileHeader"><div className="profileOrb">{form.fullName.slice(0, 2).toUpperCase()}</div><div><h2>{form.fullName}</h2><p>{form.jobTitle} • {form.department}</p></div></div>
+        <div className="profileHeader"><div className="profileOrb">{form.fullName.slice(0, 2).toUpperCase()}</div><div><h2>{form.fullName}</h2><p>{form.jobTitle} / {form.department}</p></div></div>
         <div className="completion"><span style={{ width: `${form.completionPercent}%` }} /> <b>{form.completionPercent}% complete</b></div>
         <div className="formGrid">
           <Input label="Phone" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
@@ -485,8 +511,29 @@ function Panel({ title, action, children }: { title: string; action?: React.Reac
   return <section className="panel"><div className="panelHeader"><h2>{title}</h2><div className="panelActions">{action}</div></div>{children}</section>;
 }
 
+function Modal({ title, action, close, children }: { title: string; action?: React.ReactNode; close: () => void; children: React.ReactNode }) {
+  return (
+    <div className="overlay" onClick={close}>
+      <section className="modalPanel" onClick={(event) => event.stopPropagation()}>
+        <div className="panelHeader">
+          <h2>{title}</h2>
+          <div className="panelActions">
+            {action}
+            <button className="iconButton" onClick={close} title="Close"><XCircle size={18} /></button>
+          </div>
+        </div>
+        {children}
+      </section>
+    </div>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return <article className="metric"><span>{label}</span><strong>{value}</strong></article>;
+}
+
+function Insight({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+  return <article className="insight"><div>{icon}</div><b>{title}</b><span>{text}</span></article>;
 }
 
 function DataTable({ rows, columns, renderActions }: { rows: any[]; columns: string[]; renderActions?: (row: any) => React.ReactNode }) {
@@ -517,7 +564,7 @@ function Status({ value }: { value: string }) {
 }
 
 function SkeletonGrid() {
-  return <div className="metricGrid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton" key={index} />)}</div>;
+  return <section className="pageGrid"><div className="dashboardHero skeletonHero" /><div className="metricGrid">{Array.from({ length: 6 }, (_, index) => <div className="skeleton" key={index} />)}</div></section>;
 }
 
 function navigation(role: Role) {
