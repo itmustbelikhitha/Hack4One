@@ -1,152 +1,420 @@
 # Dayflow HRMS
 
-Every workday, perfectly aligned.
+Dayflow is a full-stack Human Resource Management System for employee records, attendance, leave approvals, payroll, notifications, documents, reports, analytics, audit logs, and role-based administration.
 
-A collaborative full-stack Human Resource Management System covering authentication, role-based access control, employee profiles, attendance tracking, leave management, and payroll — built by a 4-person team in a shared repository.
+The project is built as a workspace-style application with a React dashboard, an Express TypeScript API, Prisma-ready PostgreSQL schema design, and supporting documentation for architecture, API routes, permissions, workflows, and database relationships.
+
+## Highlights
+
+- Modern React 18 + TypeScript dashboard with Vite.
+- Advanced dashboard UI with command search, quick actions, charts, dark mode, responsive layouts, and polished interaction states.
+- Express REST API with authentication, JWT access tokens, HTTP-only refresh cookie support, RBAC middleware, validation, rate limiting, CORS, Helmet, and audit logging.
+- HR modules for employees, profiles, attendance, leave, payroll, documents, notifications, analytics, reports, settings, sessions, and global search.
+- Prisma schema for a production-grade PostgreSQL model.
+- Supabase/PostgreSQL reference schema for the simpler shared database track.
+- Mermaid diagrams for ER, architecture, and workflows.
 
 ## Tech Stack
 
-| Layer     | Technology                              |
-|-----------|------------------------------------------|
-| Frontend  | React 18 + TypeScript + Vite              |
-| Styling   | Tailwind CSS                              |
-| Icons     | lucide-react                              |
-| Backend   | Express.js (Node.js)                      |
-| Database  | PostgreSQL (Supabase)                     |
-| Auth      | Supabase Auth (email/password)            |
-| Security  | Row Level Security (RLS) on all tables    |
+| Layer | Technology |
+|---|---|
+| Web | React 18, TypeScript, Vite |
+| UI | CSS, lucide-react, Recharts |
+| API | Node.js, Express, TypeScript |
+| Validation | Zod |
+| Security | JWT, bcryptjs, Helmet, CORS, express-rate-limit |
+| Database design | PostgreSQL, Prisma schema |
+| Legacy/shared DB reference | Supabase SQL schema |
+| Tests | Vitest, Testing Library |
+
+## Main Apps
+
+| Path | Purpose |
+|---|---|
+| `apps/web` | Current React dashboard client. |
+| `apps/api` | Current TypeScript Express API and Prisma schema. |
+| `backend` | Older Express/Supabase backend track kept for reference/integration history. |
+| `database` | Human-readable SQL schema for the simpler Supabase database model. |
+| `supabase` | Applied Supabase migrations and policies. |
+| `docs` | Architecture, ER diagrams, API docs, permission matrix, and workflows. |
+
+## Demo Credentials
+
+```text
+Admin:    hr@dayflow.test / Dayflow@123
+Employee: maya@dayflow.test / Dayflow@123
+```
+
+## Quick Start
+
+Install dependencies from the repository root:
+
+```bash
+npm install
+```
+
+Start the web app:
+
+```bash
+cd apps/web
+npm run dev
+```
+
+Start the TypeScript API:
+
+```bash
+cd apps/api
+npm run dev
+```
+
+Default URLs:
+
+```text
+Web: http://localhost:5173
+API: http://localhost:4200/api/v1
+Docs: http://localhost:4200/api/docs
+```
+
+## Environment
+
+Copy the example file and fill in values:
+
+```bash
+cp .env.example .env
+```
+
+Useful variables:
+
+```env
+PORT=4200
+WEB_ORIGIN=http://localhost:5173
+JWT_SECRET=replace-with-a-long-secret
+COOKIE_SECURE=false
+DATABASE_URL=postgresql://user:password@localhost:5432/dayflow
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX=100
+VITE_API_URL=http://localhost:4200/api/v1
+```
+
+## Commands
+
+From `apps/web`:
+
+```bash
+npm run dev
+npm run build
+npm run test
+npm run lint
+```
+
+From `apps/api`:
+
+```bash
+npm run dev
+npm run build
+npm run test
+npm run lint
+npm run prisma:migrate
+npm run prisma:seed
+```
+
+From the repository root:
+
+```bash
+npm run build
+npm run test
+npm run lint
+npm run migrate
+npm run seed
+```
 
 ## Project Structure
 
+```text
+Hack4One/
+|-- apps/
+|   |-- api/
+|   |   |-- prisma/
+|   |   |   |-- schema.prisma
+|   |   |   `-- seed.ts
+|   |   |-- src/
+|   |   |   |-- business.ts
+|   |   |   |-- data.ts
+|   |   |   |-- security.ts
+|   |   |   |-- server.ts
+|   |   |   |-- tests/
+|   |   |   `-- types/
+|   |   |-- package.json
+|   |   `-- tsconfig.json
+|   `-- web/
+|       |-- src/
+|       |   |-- main.tsx
+|       |   |-- styles.css
+|       |   |-- app.test.tsx
+|       |   `-- vite-env.d.ts
+|       |-- index.html
+|       |-- package.json
+|       |-- postcss.config.js
+|       |-- tsconfig.json
+|       `-- vite.config.ts
+|-- backend/
+|   |-- src/
+|   |   |-- middleware/
+|   |   |-- routes/
+|   |   |-- server.js
+|   |   `-- supabaseClient.js
+|   `-- package.json
+|-- database/
+|   `-- schema.sql
+|-- docs/
+|   |-- API.md
+|   |-- ARCHITECTURE.md
+|   |-- ER_DIAGRAM.md
+|   |-- PERMISSION_MATRIX.md
+|   `-- WORKFLOWS.md
+|-- supabase/
+|   `-- migrations/
+|-- package.json
+|-- vite.config.ts
+|-- tailwind.config.js
+`-- tsconfig.json
 ```
-Dayflow/
-├── backend/          # Express API server (shared by all modules)
-│   ├── src/
-│   │   ├── middleware/
-│   │   │   └── auth.js          # JWT verification + role checks
-│   │   ├── routes/
-│   │   │   ├── authRoutes.js     # POST /api/auth/login, /register
-│   │   │   ├── employeeRoutes.js # GET/PUT /api/employees
-│   │   │   ├── attendanceRoutes.js # POST check-in/out, GET attendance
-│   │   │   ├── leaveRoutes.js    # POST/GET leaves, PUT approve/reject
-│   │   │   └── payrollRoutes.js  # GET/PUT payroll
-│   │   ├── supabaseClient.js    # Shared Supabase client (service role)
-│   │   └── server.js            # Express app entry point
-│   └── package.json
-├── database/         # Shared database schema
-│   └── schema.sql    # Canonical schema (all 5 tables + triggers + indexes)
-├── src/              # Frontend React application (Vite + TypeScript)
-│   ├── components/   # Shared UI: Layout, Sidebar, ProtectedRoute, UI primitives
-│   ├── context/      # AuthContext (Supabase session + app user)
-│   ├── lib/          # supabase.ts, api.ts, mappers.ts, theme.ts
-│   ├── pages/        # auth/, employee/, admin/ page components
-│   ├── router/       # Lightweight router with Link + useRouter
-│   ├── types/        # Shared TypeScript types (camelCase frontend shapes)
-│   └── App.tsx       # Root: providers + route resolution
-├── supabase/
-│   └── migrations/   # Applied Supabase migrations (with RLS policies)
-├── .env.example      # Copy to .env and fill in values
-├── .gitignore
-└── README.md
+
+## Architecture
+
+```mermaid
+flowchart TB
+  User[HR Admin or Employee] --> Web[React Vite Web App]
+  Web -->|Bearer access token| API[Express API /api/v1]
+  API --> Security[Auth, RBAC, validation, rate limit]
+  Security --> Services[Business Services]
+  Services --> Memory[(Demo in-memory data)]
+  Services -. production model .-> Prisma[Prisma Client]
+  Prisma --> Postgres[(PostgreSQL)]
+  Services --> Audit[Audit Logs]
+  Services --> Notifications[Notifications]
+  Services --> Reports[CSV and PDF Exports]
 ```
 
+The current API uses seeded demo data in `apps/api/src/data.ts` while the production-ready relational model is captured in `apps/api/prisma/schema.prisma`. This lets the hackathon demo run quickly while keeping a clear migration path to PostgreSQL.
 
-## Database
+## Data Model
 
-There is **one shared database** in Supabase. The canonical schema lives in `database/schema.sql`, with the applied migration and full RLS policies in `supabase/migrations/`.
+Full ER diagram: [docs/ER_DIAGRAM.md](./docs/ER_DIAGRAM.md)
 
-| Table            | Primary Key      | Connects To                                                                 |
-|-------------------|-------------------|------------------------------------------------------------------------------|
-| `users`           | `user_id`         | → `employees.user_id`                                                        |
-| `employees`       | `employee_id`     | → `attendance.employee_id`, `leave_requests.employee_id`, `payroll.employee_id` |
-| `attendance`      | `attendance_id`   | ← `employees.employee_id`                                                    |
-| `leave_requests`  | `leave_id`        | ← `employees.employee_id`                                                    |
-| `payroll`         | `payroll_id`      | ← `employees.employee_id`                                                    |
+```mermaid
+erDiagram
+  Role ||--o{ User : assigns
+  Role }o--o{ Permission : grants
+  User ||--|| Employee : owns
+  Department ||--o{ Employee : contains
+  Employee ||--o{ Attendance : records
+  Employee ||--o{ LeaveRequest : submits
+  LeaveType ||--o{ LeaveRequest : categorizes
+  Employee ||--o{ Payroll : receives
+  Payroll ||--o{ PayrollItem : contains
+  Employee ||--o{ Document : owns
+  User ||--o{ Notification : receives
+  User ||--o{ AuditLog : creates
+  User ||--o{ Session : has
+```
 
-**Naming convention:** database is `snake_case` (`employee_id`, `full_name`, `check_in`); frontend is `camelCase` (`employeeId`, `fullName`, `checkIn`). Mapping happens in `src/lib/mappers.ts`.
+Core entities:
 
-## API Contract
+| Entity | Responsibility |
+|---|---|
+| `User` | Login identity, email, password hash, role, sessions, audit events. |
+| `Role` and `Permission` | RBAC capabilities for admins and employees. |
+| `Employee` | HR profile anchor connected to department, manager, payroll, leaves, attendance, and documents. |
+| `Attendance` | Daily check-in/check-out, status, hours, anomalies, corrections. |
+| `LeaveRequest` and `LeaveBalance` | Leave submission, approval state, yearly balances. |
+| `SalaryStructure` and `Payroll` | Salary revisions, payroll periods, generated slips. |
+| `Document` | Secure employee document metadata. |
+| `AuditLog` | Security and operations history. |
 
-All routes are prefixed with `/api`.
+## API Surface
 
-**Authentication**
-| Method | Route | Description |
-|---|---|---|
-| POST | `/api/auth/register` | Create a new account |
-| POST | `/api/auth/login` | Sign in, returns JWT |
+Base URL:
 
-**Employees**
-| Method | Route | Access | Description |
-|---|---|---|---|
-| GET | `/api/employees` | Admin | List all employees |
-| GET | `/api/employees/:employee_id` | Own/Admin | Get one employee |
-| PUT | `/api/employees/:employee_id` | Own/Admin | Update employee |
+```text
+/api/v1
+```
 
-**Attendance**
-| Method | Route | Access | Description |
-|---|---|---|---|
-| POST | `/api/attendance/check-in` | Own | Check in for today |
-| POST | `/api/attendance/check-out` | Own | Check out for today |
-| GET | `/api/attendance/:employee_id` | Own/Admin | Get employee records |
-| GET | `/api/attendance` | Admin | Get all attendance |
+Authentication:
 
-**Leave**
-| Method | Route | Access | Description |
-|---|---|---|---|
-| POST | `/api/leaves` | Own | Create leave request |
-| GET | `/api/leaves/:employee_id` | Own/Admin | Get employee's leaves |
-| GET | `/api/leaves` | Admin | Get all leave requests |
-| PUT | `/api/leaves/:leave_id/approve` | Admin | Approve a leave |
-| PUT | `/api/leaves/:leave_id/reject` | Admin | Reject a leave |
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
 
-**Payroll**
-| Method | Route | Access | Description |
-|---|---|---|---|
-| GET | `/api/payroll/:employee_id` | Own/Admin | Get employee payroll |
-| GET | `/api/payroll` | Admin | Get all payroll |
-| PUT | `/api/payroll/:employee_id` | Admin | Update/insert payroll |
+{
+  "email": "hr@dayflow.test",
+  "password": "Dayflow@123",
+  "remember": true
+}
+```
 
-## Setup
+Create employee:
 
-**Prerequisites:** Node.js 18+, a Supabase project (URL + keys).
+```http
+POST /api/v1/employees
+Authorization: Bearer <accessToken>
+Content-Type: application/json
 
-**Environment**
-1. Copy `.env.example` to `.env`
-2. Fill in your Supabase URL, anon key, and service role key
-3. Set `DATABASE_URL` to your Supabase Postgres connection string
+{
+  "employeeCode": "EMP-104",
+  "fullName": "Ananya Sharma",
+  "email": "ananya@dayflow.test",
+  "department": "Engineering",
+  "jobTitle": "Frontend Engineer",
+  "role": "EMPLOYEE"
+}
+```
 
-**Frontend**
+Check in:
+
+```http
+POST /api/v1/attendance/check-in
+Authorization: Bearer <accessToken>
+```
+
+Submit leave:
+
+```http
+POST /api/v1/leaves
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "leaveTypeId": "lt_paid",
+  "startDate": "2026-09-01",
+  "endDate": "2026-09-03",
+  "remarks": "Family travel"
+}
+```
+
+Export report:
+
+```http
+GET /api/v1/reports/employees
+Authorization: Bearer <accessToken>
+```
+
+See the full route list in [docs/API.md](./docs/API.md).
+
+## Frontend Modules
+
+The web app is currently implemented in `apps/web/src/main.tsx` with supporting styles in `apps/web/src/styles.css`.
+
+Main screens:
+
+- Auth screen with login, sign up, and reset modes.
+- Dashboard with metrics, charts, quick actions, and insight cards.
+- Employee directory with search, create, view, edit, and soft delete.
+- Profile editor with completion tracking.
+- Attendance with check-in/check-out and HR correction actions.
+- Leave submission and approval.
+- Payroll history and salary structure update.
+- Notifications, documents, analytics, reports, audit logs, settings, and command palette.
+
+## Backend Modules
+
+`apps/api/src/server.ts` wires the routes and middleware.
+
+```ts
+app.use(helmet());
+app.use(cors({ origin: process.env.WEB_ORIGIN || "http://localhost:5173", credentials: true }));
+app.use(cookieParser());
+app.use(express.json({ limit: "1mb" }));
+app.use(rateLimit({ windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 900000), limit: Number(process.env.RATE_LIMIT_MAX || 100) }));
+app.use("/api/v1", api);
+```
+
+`apps/api/src/security.ts` owns authentication and permission checks.
+
+```ts
+api.get("/employees", requirePermission("employee:read:any"), (req, res) => {
+  const q = String(req.query.q || "").toLowerCase();
+  const employees = db.employees.filter((employee) =>
+    [employee.fullName, employee.employeeCode, employee.email, employee.department]
+      .join(" ")
+      .toLowerCase()
+      .includes(q)
+  );
+  res.json(paginate(employees, req.query.page, req.query.pageSize));
+});
+```
+
+`apps/api/src/business.ts` owns workflow operations such as attendance, leave decisions, salary updates, analytics, and audit events.
+
+## Security Model
+
+- Passwords are hashed with `bcryptjs`.
+- API responses use JWT access tokens.
+- Refresh token values are stored as hashes and sent through HTTP-only cookies.
+- RBAC is enforced through route-level `requirePermission(...)`.
+- Sensitive employee operations write audit entries.
+- Helmet, CORS, JSON body limits, and rate limiting are enabled.
+- Document upload metadata validates size and MIME type.
+- Employee users can read and update only their allowed self-service fields.
+
+## Permission Overview
+
+Full matrix: [docs/PERMISSION_MATRIX.md](./docs/PERMISSION_MATRIX.md)
+
+| Capability | Admin | Employee |
+|---|---:|---:|
+| Manage employees | Yes | No |
+| Check in/out | Yes | Yes |
+| Correct attendance | Yes | No |
+| Submit leave | Yes | Yes |
+| Approve leave | Yes | No |
+| Read own payroll | Yes | Yes |
+| Update salary | Yes | No |
+| View analytics/reports | Yes | No |
+| Read audit logs | Yes | No |
+
+## Database Tracks
+
+There are two database references in the repository:
+
+1. `apps/api/prisma/schema.prisma`
+   - Production-oriented normalized schema.
+   - Includes roles, permissions, sessions, audit logs, departments, employee profiles, attendance audits, leave balances, payroll items, salary slips, documents, tokens, and organization settings.
+
+2. `database/schema.sql`
+   - Simpler Supabase/PostgreSQL schema for the original shared database track.
+   - Includes users, employees, attendance, leave requests, payroll, RLS notes, indexes, and triggers.
+
+## Documentation
+
+- [Architecture](./docs/ARCHITECTURE.md)
+- [ER Diagram](./docs/ER_DIAGRAM.md)
+- [API Documentation](./docs/API.md)
+- [Permission Matrix](./docs/PERMISSION_MATRIX.md)
+- [Workflow Diagrams](./docs/WORKFLOWS.md)
+- [Requirements Traceability](./REQUIREMENTS.md)
+
+## Build Verification
+
+For the web app:
+
 ```bash
-npm install
-npm run dev        # Vite dev server (runs automatically in Bolt)
-npm run build       # Production build
-npm run typecheck   # Type checking
+cd apps/web
+npm run build
 ```
 
-**Backend**
-```bash
-cd backend
-npm install
-npm run dev         # Starts Express on port 3001
+Expected output:
+
+```text
+tsc -b && vite build
+✓ built
 ```
 
-## Security
+## Notes for Contributors
 
-Dayflow uses Supabase Auth for password hashing and session/token management, with Row Level Security policies on every table so employees can only access their own profile, attendance, leave, and payroll data. API routes enforce role checks via middleware, and admin-only endpoints are gated separately from "own record" endpoints.
-
-## Team Responsibilities
-
-| Developer | Tool | Modules |
-|---|---|---|
-| Dev 1 | Bolt | Architecture, shared UI, database, integration, testing |
-| Dev 2 | Antigravity | Auth, login, roles, dashboards,  |
-| Dev 3 | VS Code + Copilot | Leave,attendance |
-| Dev 4 | VS Code + Copilot | Leave, employee profile, payroll |
-
-## Git Workflow
-
-- Branch naming: `feature/<module>` (e.g. `feature/technical-head`, `feature/auth-dashboard-attendance`, `feature/leave-profile-payroll`)
-- Pull before starting: `git pull origin main`
-- Commit hourly with descriptive messages: `git commit -m "Hour X: <description>"`
-- Never force push
-- Technical Head reviews and merges stable feature branches into `main`
+- Keep API routes under `/api/v1`.
+- Keep user-facing business rules in services or route handlers, not UI-only logic.
+- Add audit entries for HR-sensitive changes.
+- Update [docs/ER_DIAGRAM.md](./docs/ER_DIAGRAM.md) whenever the Prisma schema changes.
+- Update [docs/API.md](./docs/API.md) whenever a route is added, removed, or changed.
+- Do not commit generated `dist` changes unless release packaging requires them.
