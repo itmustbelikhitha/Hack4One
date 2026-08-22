@@ -73,6 +73,7 @@ button:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
 button:hover::before { opacity: 1; transform: translateX(85%); }
 button:active { transform: translateY(0) scale(.98); }
 button:hover, button:focus-visible { border-color: var(--brand); outline: 3px solid color-mix(in srgb, var(--brand) 22%, transparent); }
+button:disabled { cursor: not-allowed; opacity: .58; transform: none; box-shadow: none; }
 .primary { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border-color: transparent; color: white; justify-content: center; font-weight: 700; }
 .buttonRipple { position: absolute; width: 12px; height: 12px; border-radius: 999px; pointer-events: none; transform: translate(-50%, -50%) scale(0); background: rgba(255,255,255,.58); animation: ripplePulse .62s ease-out forwards; mix-blend-mode: screen; }
 @keyframes ripplePulse {
@@ -160,6 +161,9 @@ button:hover, button:focus-visible { border-color: var(--brand); outline: 3px so
 .panelHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .panel h2 { margin: 0; font-size: 1.05rem; letter-spacing: 0; }
 .panelActions { display: flex; gap: 8px; flex-wrap: wrap; }
+.segmented { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.segmented button { min-height: 30px; padding: 0 10px; border-color: transparent; background: transparent; box-shadow: none; }
+.segmented button.selected { color: white; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
 
 .field { display: grid; gap: 7px; color: var(--muted); font-size: .9rem; }
 .field input, .field select, select { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel) 86%, transparent); color: var(--text); padding: 0 12px; width: 100%; }
@@ -195,6 +199,26 @@ td { font-size: .92rem; }
 .list { display: grid; gap: 10px; }
 .listItem { width: 100%; min-height: 56px; justify-content: space-between; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: color-mix(in srgb, var(--panel) 72%, transparent); display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; text-align: left; }
 .listItem span, .listItem small { color: var(--muted); }
+.notificationHero { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; min-height: 180px; padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 18%, var(--panel-soft)), color-mix(in srgb, var(--brand-2) 14%, var(--panel-soft))); box-shadow: var(--shadow-soft); overflow: hidden; position: relative; }
+.notificationHero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rose) 12%, transparent), transparent); pointer-events: none; }
+.notificationHero > * { position: relative; }
+.notificationHero h2 { margin: 6px 0; font-size: clamp(1.7rem, 4vw, 2.7rem); letter-spacing: 0; }
+.notificationHero p { margin: 0; color: var(--muted); max-width: 680px; line-height: 1.55; }
+.notificationHeroIcon { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 8px; color: white; background: linear-gradient(135deg, var(--rose), var(--brand-2)); box-shadow: var(--shadow-soft); }
+.notificationStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.notificationList { display: grid; gap: 12px; }
+.notificationItem { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--panel) 74%, transparent); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease; }
+.notificationItem:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); border-color: color-mix(in srgb, var(--brand-2) 34%, var(--line)); }
+.notificationItem.unread { background: linear-gradient(90deg, color-mix(in srgb, var(--brand-2) 12%, var(--panel)), color-mix(in srgb, var(--panel) 72%, transparent)); border-left: 4px solid var(--brand-2); }
+.notificationIcon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 8px; color: var(--brand); background: var(--panel-2); }
+.notificationItem.unread .notificationIcon { color: white; background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+.notificationContent { min-width: 0; display: grid; gap: 6px; }
+.notificationTitle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.notificationContent p { margin: 0; color: var(--muted); line-height: 1.45; }
+.notificationMeta { display: flex; flex-wrap: wrap; gap: 10px; color: var(--muted); font-size: .82rem; }
+.notificationMeta span:first-child { color: var(--brand); font-weight: 800; }
+.notificationEmpty { display: grid; gap: 8px; place-items: center; }
+.notificationEmpty span { color: var(--muted); }
 .reportGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .reportTile { min-height: 170px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 16px; background: var(--panel-soft); box-shadow: var(--shadow-soft); }
 .reportTile span { color: var(--muted); text-align: left; }
@@ -224,7 +248,9 @@ td { font-size: .92rem; }
   .sidebar nav button span { display: none; }
   .workspace { padding: 16px; }
   .topbar { align-items: flex-start; flex-direction: column; }
-  .metricGrid, .reportGrid, .formGrid, .insightStrip, .opsGrid { grid-template-columns: 1fr; }
+  .metricGrid, .reportGrid, .formGrid, .insightStrip, .opsGrid, .notificationStats { grid-template-columns: 1fr; }
+  .notificationHero, .notificationItem { grid-template-columns: 1fr; align-items: start; }
+  .notificationTitle { align-items: flex-start; flex-direction: column; }
   .dashboardHero { align-items: flex-start; flex-direction: column; min-height: 280px; }
   .heroActions { justify-content: flex-start; }
   .authPreview { grid-template-columns: 1fr; }
