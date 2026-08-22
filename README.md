@@ -16,6 +16,9 @@ A collaborative full-stack Human Resource Management System covering authenticat
 | Auth      | Supabase Auth (email/password)            |
 | Security  | Row Level Security (RLS) on all tables    |
 
+## Project Structure
+
+```
 Dayflow/
 ├── backend/          # Express API server (shared by all modules)
 │   ├── src/
