@@ -45,6 +45,7 @@ Dayflow/
 ├── .env.example      # Copy to .env and fill in values
 ├── .gitignore
 └── README.md
+```
 
 
 ## Database
