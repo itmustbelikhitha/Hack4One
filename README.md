@@ -16,35 +16,36 @@ A collaborative full-stack Human Resource Management System covering authenticat
 | Auth      | Supabase Auth (email/password)            |
 | Security  | Row Level Security (RLS) on all tables    |
 
-## Project Structure
 Dayflow/
-├── backend/ # Express API server (shared by all modules)
-│ └── src/
-│ ├── middleware/
-│ │ └── auth.js # JWT verification + role checks
-│ ├── routes/
-│ │ ├── authRoutes.js # POST /api/auth/login, /register
-│ │ ├── employeeRoutes.js # GET/PUT /api/employees
-│ │ ├── attendanceRoutes.js # POST check-in/out, GET attendance
-│ │ ├── leaveRoutes.js # POST/GET leaves, PUT approve/reject
-│ │ └── payrollRoutes.js # GET/PUT payroll
-│ ├── supabaseClient.js # Shared Supabase client (service role)
-│ └── server.js # Express app entry point
-├── database/
-│ └── schema.sql # Canonical schema (all 5 tables + triggers + indexes)
-├── src/ # Frontend (React + TypeScript, Vite)
-│ ├── components/ # Shared UI: Layout, Sidebar, ProtectedRoute, primitives
-│ ├── context/ # AuthContext (Supabase session + app user)
-│ ├── lib/ # supabase.ts, api.ts, mappers.ts, theme.ts
-│ ├── pages/ # auth/, employee/, admin/ page components
-│ ├── router/ # Lightweight router with Link + useRouter
-│ ├── types/ # Shared TypeScript types (camelCase frontend shapes)
-│ └── App.tsx # Root: providers + route resolution
+├── backend/          # Express API server (shared by all modules)
+│   ├── src/
+│   │   ├── middleware/
+│   │   │   └── auth.js          # JWT verification + role checks
+│   │   ├── routes/
+│   │   │   ├── authRoutes.js     # POST /api/auth/login, /register
+│   │   │   ├── employeeRoutes.js # GET/PUT /api/employees
+│   │   │   ├── attendanceRoutes.js # POST check-in/out, GET attendance
+│   │   │   ├── leaveRoutes.js    # POST/GET leaves, PUT approve/reject
+│   │   │   └── payrollRoutes.js  # GET/PUT payroll
+│   │   ├── supabaseClient.js    # Shared Supabase client (service role)
+│   │   └── server.js            # Express app entry point
+│   └── package.json
+├── database/         # Shared database schema
+│   └── schema.sql    # Canonical schema (all 5 tables + triggers + indexes)
+├── src/              # Frontend React application (Vite + TypeScript)
+│   ├── components/   # Shared UI: Layout, Sidebar, ProtectedRoute, UI primitives
+│   ├── context/      # AuthContext (Supabase session + app user)
+│   ├── lib/          # supabase.ts, api.ts, mappers.ts, theme.ts
+│   ├── pages/        # auth/, employee/, admin/ page components
+│   ├── router/       # Lightweight router with Link + useRouter
+│   ├── types/        # Shared TypeScript types (camelCase frontend shapes)
+│   └── App.tsx       # Root: providers + route resolution
 ├── supabase/
-│ └── migrations/ # Applied Supabase migrations (with RLS policies)
-├── .env.example
+│   └── migrations/   # Applied Supabase migrations (with RLS policies)
+├── .env.example      # Copy to .env and fill in values
 ├── .gitignore
 └── README.md
+
 
 ## Database
 
