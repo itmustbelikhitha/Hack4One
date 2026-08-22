@@ -208,9 +208,10 @@ npm run dev      # Starts Express on port 3001
 
 | Developer | Tool             | Modules                                      |
 |-----------|------------------|----------------------------------------------|
-| Dev 1 (Technical Head) | Bolt | Architecture, shared UI, database, integration, testing |
+| Dev 1     | Bolt | Architecture, shared UI, database, integration, testing |
 | Dev 2    | Antigravity      | Auth, login, roles, dashboards, attendance   |
-| Dev 3    | VS Code + Copilot | Profile, leave, payroll                      |
+| Dev 3    | VS Code + Copilot | leave, attendance                   |
+| Dev 4    | VS Code + Copilot | Profile, leave, payroll                      |
 
 ## Git Workflow
 
