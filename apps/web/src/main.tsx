@@ -113,6 +113,22 @@ function App() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  useEffect(() => {
+    const handler = (event: PointerEvent) => {
+      const button = (event.target as HTMLElement).closest("button");
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      const ripple = document.createElement("span");
+      ripple.className = "buttonRipple";
+      ripple.style.left = `${event.clientX - rect.left}px`;
+      ripple.style.top = `${event.clientY - rect.top}px`;
+      button.appendChild(ripple);
+      window.setTimeout(() => ripple.remove(), 640);
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, []);
+
   if (!token || !user) return <AuthScreen onLogin={(nextToken, nextUser, nextEmployee) => {
     localStorage.setItem("dayflow_token", nextToken);
     setToken(nextToken);
@@ -155,6 +171,12 @@ function App() {
         </header>
         <Page route={route} role={user.role} token={token} employee={employee} setRoute={setRoute} notify={notify} refreshMe={() => api("/me", token).then((data) => setEmployee(data.employee))} />
       </main>
+      <div className="quickDock" aria-label="Quick actions">
+        <button onClick={() => setCommandOpen(true)} title="Command search"><Search size={18} /></button>
+        <button onClick={() => setRoute("dashboard")} title="Dashboard"><LayoutDashboard size={18} /></button>
+        <button onClick={() => setRoute(user.role === "ADMIN" ? "analytics" : "attendance")} title={user.role === "ADMIN" ? "Analytics" : "Attendance"}>{user.role === "ADMIN" ? <Activity size={18} /> : <CalendarCheck size={18} />}</button>
+        <button onClick={() => setRoute("settings")} title="Settings"><Settings size={18} /></button>
+      </div>
       {commandOpen && <CommandPalette token={token} nav={nav} close={() => setCommandOpen(false)} go={setRoute} />}
       {toast && <div className={`toast ${toast.tone}`}>{toast.text}</div>}
     </div>
@@ -266,6 +288,11 @@ function Dashboard({ role, token, setRoute }: { role: Role; token: string; setRo
         <Insight icon={<CalendarCheck size={18} />} title="Attendance pulse" text="Trend chart updates from live attendance records." />
         <Insight icon={<ShieldCheck size={18} />} title="Audit posture" text="Sensitive HR actions are tracked for review." />
         <Insight icon={<Bell size={18} />} title="Queue focus" text="Notifications surface unread work first." />
+      </div>
+      <div className="opsGrid">
+        <WorkflowCard title="Approvals" value={role === "ADMIN" ? "Leave, payroll, documents" : "Leave and documents"} tone="green" />
+        <WorkflowCard title="Risk signals" value="Late check-ins, missing exits, profile gaps" tone="amber" />
+        <WorkflowCard title="Exports" value="CSV reports and payroll slips" tone="blue" />
       </div>
       <div className="split">
         <Panel title="Attendance Trend" action={<button onClick={() => setRoute("attendance")}><CalendarCheck size={16} /> Open</button>}>
@@ -534,6 +561,16 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function Insight({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
   return <article className="insight"><div>{icon}</div><b>{title}</b><span>{text}</span></article>;
+}
+
+function WorkflowCard({ title, value, tone }: { title: string; value: string; tone: "green" | "amber" | "blue" }) {
+  return (
+    <article className={`workflowCard ${tone}`}>
+      <div className="workflowGraphic"><span /><span /><span /></div>
+      <b>{title}</b>
+      <p>{value}</p>
+    </article>
+  );
 }
 
 function DataTable({ rows, columns, renderActions }: { rows: any[]; columns: string[]; renderActions?: (row: any) => React.ReactNode }) {
