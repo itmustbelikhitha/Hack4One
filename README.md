@@ -2,7 +2,7 @@
 
 Every workday, perfectly aligned.
 
-A collaborative full-stack Human Resource Management System covering authentication, role-based access control, employee profiles, attendance tracking, leave management, and payroll — built by a 3-person team in a shared repository.
+A collaborative full-stack Human Resource Management System covering authentication, role-based access control, employee profiles, attendance tracking, leave management, and payroll — built by a 4-person team in a shared repository.
 
 ## Tech Stack
 
