@@ -142,6 +142,15 @@ api.patch("/employees/:id", (req: AuthedRequest, res) => {
   res.json(employee);
 });
 
+api.delete("/employees/:id", requirePermission("employee:delete"), (req: AuthedRequest, res) => {
+  const employee = db.employees.find((item) => item.id === req.params.id);
+  if (!employee) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Employee not found." } });
+  employee.employmentStatus = "TERMINATED";
+  employee.deletedAt = new Date().toISOString();
+  audit(req.user?.id, "EMPLOYEE_DELETION", "Employee", employee.id, { softDelete: true });
+  res.json({ message: "Employee was soft-deleted and historical records were preserved.", employee });
+});
+
 api.get("/attendance", (req: AuthedRequest, res) => {
   let rows = req.user?.role === "ADMIN" ? db.attendance : db.attendance.filter((item) => item.employeeId === req.user?.employeeId);
   if (req.query.status) rows = rows.filter((item) => item.status === req.query.status);
@@ -160,9 +169,14 @@ api.post("/attendance/check-out", requirePermission("attendance:checkout"), (req
 api.patch("/attendance/:id", requirePermission("attendance:manage"), (req: AuthedRequest, res) => {
   const record = db.attendance.find((item) => item.id === req.params.id);
   if (!record) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Attendance record not found." } });
+  const before = { ...record };
   Object.assign(record, req.body);
+  if (record.checkInAt && record.checkOutAt) {
+    record.totalWorkingHours = Number(((new Date(record.checkOutAt).valueOf() - new Date(record.checkInAt).valueOf()) / 3600000).toFixed(2));
+    record.anomaly = record.totalWorkingHours < 4;
+  }
   audit(req.user?.id, "ATTENDANCE_MODIFICATION", "Attendance", record.id, { after: req.body });
-  res.json(record);
+  res.json({ before, record });
 });
 
 api.get("/leaves", (req: AuthedRequest, res) => {
@@ -210,7 +224,7 @@ api.patch("/notifications/read-all", (req: AuthedRequest, res) => {
   res.json({ message: "All notifications marked as read." });
 });
 
-api.get("/documents", (req: AuthedRequest, res) => res.json({ data: db.documents.filter((item) => req.user?.role === "ADMIN" || item.employeeId === req.user?.employeeId) }));
+api.get("/documents", (req: AuthedRequest, res) => res.json({ data: db.documents.filter((item) => !item.deletedAt && (req.user?.role === "ADMIN" || item.employeeId === req.user?.employeeId)) }));
 api.post("/documents", (req: AuthedRequest, res) => {
   const body = z.object({ employeeId: z.string(), name: z.string(), category: z.string(), mimeType: z.string(), sizeBytes: z.number().max(10 * 1024 * 1024) }).parse(req.body);
   if (req.user?.role !== "ADMIN" && body.employeeId !== req.user?.employeeId) return res.status(403).json({ error: { code: "FORBIDDEN", message: "Document access denied." } });
@@ -219,6 +233,18 @@ api.post("/documents", (req: AuthedRequest, res) => {
   db.documents.unshift(doc);
   audit(req.user?.id, "DOCUMENT_UPLOAD", "Document", doc.id);
   res.status(201).json(doc);
+});
+api.get("/documents/:id", (req: AuthedRequest, res) => {
+  const doc = db.documents.find((item) => item.id === req.params.id && !item.deletedAt);
+  if (!doc || (req.user?.role !== "ADMIN" && doc.employeeId !== req.user?.employeeId)) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Document not found." } });
+  res.type(doc.mimeType).send(Buffer.from(`DAYFLOW document preview\nName: ${doc.name}\nCategory: ${doc.category}\nStorage key: ${doc.storageKey}`));
+});
+api.delete("/documents/:id", (req: AuthedRequest, res) => {
+  const doc = db.documents.find((item) => item.id === req.params.id && !item.deletedAt);
+  if (!doc || (req.user?.role !== "ADMIN" && doc.employeeId !== req.user?.employeeId)) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Document not found." } });
+  doc.deletedAt = new Date().toISOString();
+  audit(req.user?.id, "DOCUMENT_DELETE", "Document", doc.id);
+  res.json({ message: "Document deleted.", document: doc });
 });
 
 api.get("/analytics", requirePermission("analytics:read"), (_req, res) => res.json(analytics()));
@@ -237,7 +263,31 @@ api.get("/search", (req: AuthedRequest, res) => {
   const employees = req.user?.role === "ADMIN" ? db.employees.filter((employee) => [employee.fullName, employee.employeeCode, employee.email, employee.department].join(" ").toLowerCase().includes(q)) : [];
   res.json({ employees, leaves: db.leaveRequests.filter((leave) => leave.remarks.toLowerCase().includes(q)), attendance: db.attendance.filter((attendance) => attendance.date.includes(q)) });
 });
-api.get("/settings", requirePermission("settings:manage"), (_req, res) => res.json({ organization: { name: "Dayflow Demo Co.", timezone: "America/New_York" }, departments: db.departments, leaveTypes: db.leaveTypes, permissions }));
+const organization = { name: "Dayflow Demo Co.", timezone: "America/New_York", workingHours: "09:30-17:30", payrollDay: "Last business day" };
+api.get("/settings", requirePermission("settings:manage"), (_req, res) => res.json({ organization, departments: db.departments, leaveTypes: db.leaveTypes, permissions }));
+api.patch("/settings/organization", requirePermission("settings:manage"), (req: AuthedRequest, res) => {
+  Object.assign(organization, z.object({ name: z.string().optional(), timezone: z.string().optional(), workingHours: z.string().optional(), payrollDay: z.string().optional() }).parse(req.body));
+  audit(req.user?.id, "ORGANIZATION_SETTINGS_UPDATE", "OrganizationSetting", "default", organization);
+  res.json(organization);
+});
+api.post("/settings/departments", requirePermission("settings:manage"), (req: AuthedRequest, res) => {
+  const body = z.object({ name: z.string().min(2) }).parse(req.body);
+  if (db.departments.some((department) => department.name.toLowerCase() === body.name.toLowerCase())) return res.status(409).json({ error: { code: "DEPARTMENT_EXISTS", message: "Department already exists." } });
+  const department = { id: id("dep"), name: body.name };
+  db.departments.push(department);
+  audit(req.user?.id, "DEPARTMENT_CREATE", "Department", department.id);
+  res.status(201).json(department);
+});
+api.post("/settings/leave-types", requirePermission("settings:manage"), (req: AuthedRequest, res) => {
+  const body = z.object({ name: z.string().min(2), paid: z.boolean(), annualAllowance: z.number().min(0) }).parse(req.body);
+  const leaveType = { id: id("lt"), ...body };
+  db.leaveTypes.push(leaveType);
+  audit(req.user?.id, "LEAVE_TYPE_CREATE", "LeaveType", leaveType.id);
+  res.status(201).json(leaveType);
+});
+api.get("/sessions", authenticate, (req: AuthedRequest, res) => {
+  res.json({ data: db.sessions.filter((session) => session.userId === req.user?.id).map((session) => ({ id: session.id, expiresAt: session.expiresAt, revokedAt: session.revokedAt || null })) });
+});
 
 app.use("/api/v1", api);
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup({ openapi: "3.0.0", info: { title: "Dayflow API", version: "1.0.0" }, paths: {} }));

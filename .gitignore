@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 node_modules
 dist
 apps/*/dist
@@ -7,3 +8,28 @@ uploads
 coverage
 playwright-report
 test-results
+=======
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env
+>>>>>>> 1aec45ab7cea54af076a428c26d9ca711fe3d8b9

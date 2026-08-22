@@ -7,17 +7,27 @@ import {
   CalendarCheck,
   Command,
   Download,
+  Eye,
   FileText,
+  FileSearch,
+  CheckCircle,
   LayoutDashboard,
   LogOut,
   Moon,
+  Pencil,
+  Plus,
+  RotateCw,
+  Save,
   Search,
   Settings,
   ShieldCheck,
   Sun,
+  Trash2,
+  Upload,
   UserRound,
   UsersRound,
-  WalletCards
+  WalletCards,
+  XCircle
 } from "lucide-react";
 import {
   Bar,
@@ -69,6 +79,12 @@ function App() {
   const [route, setRoute] = useState("dashboard");
   const [dark, setDark] = useState(localStorage.getItem("dayflow_theme") === "dark");
   const [commandOpen, setCommandOpen] = useState(false);
+  const [toast, setToast] = useState<{ tone: "success" | "error" | "info"; text: string } | null>(null);
+
+  function notify(tone: "success" | "error" | "info", text: string) {
+    setToast({ tone, text });
+    window.setTimeout(() => setToast(null), 3200);
+  }
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -132,9 +148,10 @@ function App() {
             <button className="iconButton" onClick={() => { localStorage.removeItem("dayflow_token"); setToken(""); setUser(null); }} title="Logout"><LogOut size={18} /></button>
           </div>
         </header>
-        <Page route={route} role={user.role} token={token} employee={employee} setRoute={setRoute} />
+        <Page route={route} role={user.role} token={token} employee={employee} setRoute={setRoute} notify={notify} refreshMe={() => api("/me", token).then((data) => setEmployee(data.employee))} />
       </main>
       {commandOpen && <CommandPalette token={token} nav={nav} close={() => setCommandOpen(false)} go={setRoute} />}
+      {toast && <div className={`toast ${toast.tone}`}>{toast.text}</div>}
     </div>
   );
 }
@@ -199,19 +216,19 @@ function AuthScreen({ onLogin }: { onLogin: (token: string, user: User, employee
   );
 }
 
-function Page(props: { route: string; role: Role; token: string; employee: Employee | null; setRoute: (route: string) => void }) {
+function Page(props: { route: string; role: Role; token: string; employee: Employee | null; setRoute: (route: string) => void; notify: (tone: "success" | "error" | "info", text: string) => void; refreshMe: () => void }) {
   if (props.route === "dashboard") return <Dashboard {...props} />;
-  if (props.route === "employees") return <Employees token={props.token} />;
-  if (props.route === "profile") return <Profile token={props.token} employee={props.employee} />;
-  if (props.route === "attendance") return <Attendance token={props.token} role={props.role} />;
-  if (props.route === "leave") return <Leave token={props.token} role={props.role} />;
-  if (props.route === "payroll") return <Payroll token={props.token} role={props.role} employee={props.employee} />;
-  if (props.route === "notifications") return <Notifications token={props.token} />;
-  if (props.route === "documents") return <Documents token={props.token} employee={props.employee} />;
+  if (props.route === "employees") return <Employees token={props.token} notify={props.notify} />;
+  if (props.route === "profile") return <Profile token={props.token} employee={props.employee} notify={props.notify} refreshMe={props.refreshMe} />;
+  if (props.route === "attendance") return <Attendance token={props.token} role={props.role} notify={props.notify} />;
+  if (props.route === "leave") return <Leave token={props.token} role={props.role} notify={props.notify} />;
+  if (props.route === "payroll") return <Payroll token={props.token} role={props.role} employee={props.employee} notify={props.notify} />;
+  if (props.route === "notifications") return <Notifications token={props.token} notify={props.notify} />;
+  if (props.route === "documents") return <Documents token={props.token} employee={props.employee} notify={props.notify} />;
   if (props.route === "analytics") return <Analytics token={props.token} />;
   if (props.route === "reports") return <Reports token={props.token} />;
   if (props.route === "audit") return <AuditLogs token={props.token} />;
-  return <SettingsPage token={props.token} role={props.role} />;
+  return <SettingsPage token={props.token} role={props.role} notify={props.notify} />;
 }
 
 function Dashboard({ role, token, setRoute }: { role: Role; token: string; setRoute: (route: string) => void }) {
@@ -239,37 +256,80 @@ function Dashboard({ role, token, setRoute }: { role: Role; token: string; setRo
   );
 }
 
-function Employees({ token }: { token: string }) {
+function Employees({ token, notify }: { token: string; notify: (tone: "success" | "error" | "info", text: string) => void }) {
   const [q, setQ] = useState("");
   const [data, setData] = useState<any>({ data: [] });
   const [draft, setDraft] = useState({ employeeCode: "", fullName: "", email: "", department: "Engineering", jobTitle: "" });
-  useEffect(() => { const t = setTimeout(() => api(`/employees?q=${encodeURIComponent(q)}`, token).then(setData), 250); return () => clearTimeout(t); }, [q, token]);
+  const [selected, setSelected] = useState<Employee | null>(null);
+  const [editing, setEditing] = useState<Employee | null>(null);
+  const load = () => api(`/employees?q=${encodeURIComponent(q)}`, token).then(setData).catch((error) => notify("error", error.message));
+  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [q, token]);
   async function createEmployee() {
-    const employee = await api("/employees", token, { method: "POST", body: draft });
-    setData({ ...data, data: [employee, ...data.data] });
-    setDraft({ employeeCode: "", fullName: "", email: "", department: "Engineering", jobTitle: "" });
+    try {
+      const employee = await api("/employees", token, { method: "POST", body: draft });
+      setData({ ...data, data: [employee, ...data.data] });
+      setDraft({ employeeCode: "", fullName: "", email: "", department: "Engineering", jobTitle: "" });
+      notify("success", `${employee.fullName} was onboarded with a starter account.`);
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Employee creation failed.");
+    }
+  }
+  async function saveEmployee() {
+    if (!editing) return;
+    try {
+      const employee = await api(`/employees/${editing.id}`, token, { method: "PATCH", body: editing });
+      setData({ ...data, data: data.data.map((item: Employee) => item.id === employee.id ? employee : item) });
+      setEditing(null);
+      notify("success", "Employee profile updated.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Update failed.");
+    }
+  }
+  async function deleteEmployee(employee: Employee) {
+    if (!window.confirm(`Soft-delete ${employee.fullName}? Historical attendance, leave, payroll, and audit records will remain.`)) return;
+    try {
+      const result = await api(`/employees/${employee.id}`, token, { method: "DELETE" });
+      setData({ ...data, data: data.data.map((item: Employee) => item.id === employee.id ? result.employee : item) });
+      notify("info", result.message);
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Delete failed.");
+    }
   }
   return (
     <section className="pageGrid">
       <Panel title="Employee Directory" action={<button onClick={() => download(`${apiBase}/reports/employees`, token)}><Download size={16} /> Export</button>}>
         <div className="toolbar"><Input label="Search employees" value={q} onChange={setQ} /></div>
-        <DataTable rows={data.data} columns={["employeeCode", "fullName", "department", "jobTitle", "email", "employmentStatus", "joiningDate"]} />
+        <DataTable rows={data.data} columns={["employeeCode", "fullName", "department", "jobTitle", "email", "employmentStatus", "joiningDate"]} renderActions={(row) => <><button title="View profile" onClick={() => setSelected(row)}><Eye size={16} /></button><button title="Edit profile" onClick={() => setEditing(row)}><Pencil size={16} /></button><button title="Soft delete" onClick={() => deleteEmployee(row)}><Trash2 size={16} /></button></>} />
       </Panel>
       <Panel title="Onboard Employee">
         <div className="formGrid">
           {(["employeeCode", "fullName", "email", "department", "jobTitle"] as const).map((key) => <Input key={key} label={label(key)} value={draft[key]} onChange={(value) => setDraft({ ...draft, [key]: value })} />)}
-          <button className="primary" onClick={createEmployee}>Create employee</button>
+          <button className="primary" onClick={createEmployee}><Plus size={16} /> Create employee</button>
         </div>
       </Panel>
+      {selected && <Modal title={selected.fullName} close={() => setSelected(null)}>
+        <KeyValue data={{ "Employee ID": selected.employeeCode, Email: selected.email, Phone: selected.phone, Address: selected.address, Department: selected.department, Title: selected.jobTitle, Manager: selected.reportingManager, Status: selected.employmentStatus, "Net salary": money.format(selected.netSalary), "Profile completion": `${selected.completionPercent}%` }} />
+      </Modal>}
+      {editing && <Modal title={`Edit ${editing.fullName}`} close={() => setEditing(null)} action={<button className="primary" onClick={saveEmployee}><Save size={16} /> Save</button>}>
+        <div className="formGrid">
+          {(["fullName", "phone", "address", "jobTitle", "department", "employmentStatus", "reportingManager"] as const).map((key) => <Input key={key} label={label(key)} value={String(editing[key] || "")} onChange={(value) => setEditing({ ...editing, [key]: value })} />)}
+        </div>
+      </Modal>}
     </section>
   );
 }
 
-function Profile({ token, employee }: { token: string; employee: Employee | null }) {
+function Profile({ token, employee, notify, refreshMe }: { token: string; employee: Employee | null; notify: (tone: "success" | "error" | "info", text: string) => void; refreshMe: () => void }) {
   const [form, setForm] = useState(employee);
   if (!form) return null;
   async function save() {
-    setForm(await api(`/employees/${form!.id}`, token, { method: "PATCH", body: form }));
+    try {
+      setForm(await api(`/employees/${form!.id}`, token, { method: "PATCH", body: form }));
+      refreshMe();
+      notify("success", "Profile saved and audit logged.");
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Profile save failed.");
+    }
   }
   return (
     <section className="split">
@@ -280,7 +340,7 @@ function Profile({ token, employee }: { token: string; employee: Employee | null
           <Input label="Phone" value={form.phone} onChange={(phone) => setForm({ ...form, phone })} />
           <Input label="Address" value={form.address} onChange={(address) => setForm({ ...form, address })} />
           <Input label="Profile picture URL" value={form.profilePictureUrl || ""} onChange={(profilePictureUrl) => setForm({ ...form, profilePictureUrl })} />
-          <button className="primary" onClick={save}>Save profile</button>
+          <button className="primary" onClick={save}><Save size={16} /> Save profile</button>
         </div>
       </Panel>
       <Panel title="Job and Salary">
@@ -290,17 +350,35 @@ function Profile({ token, employee }: { token: string; employee: Employee | null
   );
 }
 
-function Attendance({ token, role }: { token: string; role: Role }) {
+function Attendance({ token, role, notify }: { token: string; role: Role; notify: (tone: "success" | "error" | "info", text: string) => void }) {
   const [data, setData] = useState<any>({ data: [] });
   const [status, setStatus] = useState("");
-  const load = () => api(`/attendance${status ? `?status=${status}` : ""}`, token).then(setData);
+  const load = () => api(`/attendance${status ? `?status=${status}` : ""}`, token).then(setData).catch((error) => notify("error", error.message));
   useEffect(() => { load(); }, [status]);
-  async function action(path: string) { await api(path, token, { method: "POST" }); load(); }
+  async function action(path: string) {
+    try {
+      await api(path, token, { method: "POST" });
+      notify("success", path.includes("check-in") ? "Checked in for today." : "Checked out and working hours were calculated.");
+      load();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Attendance action failed.");
+    }
+  }
+  async function correct(row: any, status: string) {
+    const now = new Date().toISOString();
+    try {
+      await api(`/attendance/${row.id}`, token, { method: "PATCH", body: { status, checkInAt: row.checkInAt || now, checkOutAt: status === "ABSENT" || status === "LEAVE" ? null : row.checkOutAt || now, notes: `HR correction: ${status}` } });
+      notify("success", "Attendance correction saved with an audit entry.");
+      load();
+    } catch (error) {
+      notify("error", error instanceof Error ? error.message : "Attendance correction failed.");
+    }
+  }
   return (
     <Panel title="Attendance" action={<><button onClick={() => action("/attendance/check-in")}><CalendarCheck size={16} /> Check in</button><button onClick={() => action("/attendance/check-out")}><Activity size={16} /> Check out</button></>}>
       <div className="toolbar"><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option><option>PRESENT</option><option>ABSENT</option><option>HALF_DAY</option><option>LEAVE</option></select></div>
-      <DataTable rows={data.data} columns={["date", "employeeId", "checkInAt", "checkOutAt", "status", "totalWorkingHours", "late", "earlyDeparture", "anomaly"]} />
-      {role === "ADMIN" && <p className="hint">HR corrections are made inline through the attendance management API and audited.</p>}
+      <DataTable rows={data.data} columns={["date", "employeeId", "checkInAt", "checkOutAt", "status", "totalWorkingHours", "late", "earlyDeparture", "anomaly"]} renderActions={(row) => role === "ADMIN" ? <><button title="Mark present" onClick={() => correct(row, "PRESENT")}><CheckCircle size={16} /></button><button title="Mark half day" onClick={() => correct(row, "HALF_DAY")}><Activity size={16} /></button><button title="Mark absent" onClick={() => correct(row, "ABSENT")}><XCircle size={16} /></button></> : null} />
+      {role === "ADMIN" && <p className="hint">HR correction buttons recalculate hours where possible and write an audit entry.</p>}
     </Panel>
   );
 }
