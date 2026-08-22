@@ -36,7 +36,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function ensureAppUser(authUser: User): Promise<AppUser | null> {
     let appUser = await fetchAppUser(authUser.id);
-    if (appUser) return appUser;
+    if (appUser) {
+      if (!appUser.employeeId) {
+        const { data: emp } = await supabase
+          .from('employees')
+          .select('employee_id')
+          .eq('user_id', authUser.id)
+          .maybeSingle() as { data: { employee_id: string } | null; error: any };
+
+        if (emp) {
+          await supabase.from('users').update({ employee_id: emp.employee_id }).eq('user_id', authUser.id);
+          appUser.employeeId = emp.employee_id;
+        } else {
+          const today = new Date().toISOString().split('T')[0];
+          const { data: newEmp } = await supabase
+            .from('employees')
+            .insert({
+              user_id: authUser.id,
+              full_name: appUser.name || 'Employee',
+              email: authUser.email || '',
+              joining_date: today,
+            })
+            .select('employee_id')
+            .maybeSingle() as { data: { employee_id: string } | null; error: any };
+
+          if (newEmp) {
+            await supabase.from('users').update({ employee_id: newEmp.employee_id }).eq('user_id', authUser.id);
+            appUser.employeeId = newEmp.employee_id;
+          }
+        }
+      }
+      return appUser;
+    }
 
     const meta = authUser.user_metadata || {};
     const name = meta.name || (authUser.email ? authUser.email.split('@')[0] : 'User');
@@ -58,7 +89,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
 
-    return inserted ? mapUser(inserted) : null;
+    if (inserted) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: createdEmp } = await supabase
+        .from('employees')
+        .insert({
+          user_id: authUser.id,
+          full_name: name,
+          email: authUser.email || '',
+          joining_date: today,
+        })
+        .select('employee_id')
+        .maybeSingle() as { data: { employee_id: string } | null; error: any };
+
+      if (createdEmp) {
+        await supabase.from('users').update({ employee_id: createdEmp.employee_id }).eq('user_id', authUser.id);
+        inserted.employee_id = createdEmp.employee_id;
+      }
+      return mapUser(inserted);
+    }
+    return null;
   }
 
   useEffect(() => {
@@ -130,6 +180,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
     });
     if (profileError) throw profileError;
+
+    const today = new Date().toISOString().split('T')[0];
+    const { data: empData } = await supabase.from('employees').insert({
+      user_id: data.user.id,
+      full_name: name,
+      email,
+      joining_date: today,
+    }).select('employee_id').maybeSingle() as { data: { employee_id: string } | null; error: any };
+
+    if (empData) {
+      await supabase.from('users').update({ employee_id: empData.employee_id }).eq('user_id', data.user.id);
+    }
   }
 
   async function signOut() {

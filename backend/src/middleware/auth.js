@@ -6,7 +6,7 @@
 // Attaches `req.user` with { user_id, employee_id, role, name, email }.
 // ============================================================
 
-import { supabase } from './supabaseClient.js';
+import { supabase } from '../supabaseClient.js';
 
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -31,6 +31,20 @@ export async function requireAuth(req, res, next) {
     return res.status(403).json({ error: 'User profile not found.' });
   }
 
+  // Guarantee employee_id is available for other modules
+  if (!appUser.employee_id) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('employee_id')
+      .eq('user_id', appUser.user_id)
+      .maybeSingle();
+
+    if (emp) {
+      appUser.employee_id = emp.employee_id;
+      await supabase.from('users').update({ employee_id: emp.employee_id }).eq('user_id', appUser.user_id);
+    }
+  }
+
   req.user = appUser;
   next();
 }
@@ -41,3 +55,4 @@ export function requireAdmin(req, res, next) {
   }
   next();
 }
+
