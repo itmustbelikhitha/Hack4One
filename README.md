@@ -138,7 +138,7 @@ Dayflow uses Supabase Auth for password hashing and session/token management, wi
 
 | Developer | Tool | Modules |
 |---|---|---|
-| Dev 1 (Technical Head) | Bolt | Architecture, shared UI, database, integration, testing |
+| Dev 1 | Bolt | Architecture, shared UI, database, integration, testing |
 | Dev 2 | Antigravity | Auth, login, roles, dashboards,  |
 | Dev 3 | VS Code + Copilot | Leave,attendance |
 | Dev 4 | VS Code + Copilot | Leave, employee profile, payroll |
