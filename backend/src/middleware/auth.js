@@ -6,7 +6,7 @@
 // Attaches `req.user` with { user_id, employee_id, role, name, email }.
 // ============================================================
 
-import { supabase } from './supabaseClient.js';
+import { supabase } from '../supabaseClient.js';
 
 export async function requireAuth(req, res, next) {
   const header = req.headers.authorization;
