@@ -71,7 +71,7 @@ type Employee = {
   completionPercent: number;
 };
 
-const apiBase = import.meta.env.VITE_API_URL || "http://localhost:4200/api/v1";
+const apiBase = import.meta.env.VITE_API_URL || "/api/v1";
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const colors = ["#0f766e", "#2563eb", "#dc2626", "#ca8a04", "#7c3aed"];
 
